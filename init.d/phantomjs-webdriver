@@ -1,0 +1,101 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          phantomjs-webdriver
+# Required-Start:    $network $remote_fs $local_fs $syslog selenium-hub
+# Required-Stop:     $network $remote_fs $local_fs $syslog selenium-hub
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start/stop Phantomjs Webdriver linked to Selenium Grid Hub
+### END INIT INFO
+# upstart-job
+#
+# Symlink target for initscripts that have been converted to Upstart.
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+NAME=phantomjs-1.9.8
+DAEMON=/usr/bin/$NAME
+PIDFILE_DIR=/var/run/selenium
+PIDFILE="${PIDFILE_DIR}/${NAME}-webdriver.pid"
+LOGFILE_DIR=/var/log/selenium
+LOGFILE="${LOGFILE_DIR}/${NAME}-webdriver.log"
+SELENIUM_USER="selenium"
+SERVICE_NAME="phantomjs-webdriver"
+SERVICE_ROLE="node"
+INITSCRIPT="$(basename "$0")"
+SCRIPTNAME="${INITSCRIPT%.sh}"
+COMMAND="$1"
+
+[ -x "$DAEMON" ] || exit 0
+
+. /lib/init/vars.sh
+. /lib/lsb/init-functions
+
+WEBDRIVER_GRID_HUB=http://127.0.0.1:4444
+GHOSTDRIVER_PORT=127.0.0.1:8190
+GHOSTDRIVER_DEBUG="false"
+DAEMON_ARGS="--quiet --pidfile $PIDFILE --nicelevel 19 --user $SELENIUM_USER"
+DAEMON_CMD="$DAEMON --webdriver-selenium-grid-hub=$WEBDRIVER_GRID_HUB --webdriver=$GHOSTDRIVER_PORT --debug=$GHOSTDRIVER_DEBUG --disk-cache=no --ignore-ssl-errors=yes"
+
+start() {
+    logger "Starting Selenium Grid in ${SERVICE_ROLE} mode..."
+
+    mkdir -p "$LOGFILE_DIR" "$PIDFILE_DIR"
+    chown -R $SELENIUM_USER "$LOGFILE_DIR" "$PIDFILE_DIR"
+
+    start-stop-daemon $DAEMON_ARGS --start --background --make-pidfile --chuid $SELENIUM_USER --startas /bin/bash -- -c "exec $DAEMON_CMD >> $LOGFILE 2>&1"
+    RETVAL="$?"
+
+    return "$RETVAL"
+}
+
+stop() {
+    logger "Stopping Selenium Grid instance..."
+
+    start-stop-daemon $DAEMON_ARGS --stop --retry=TERM/30/KILL/5
+    RETVAL="$?"
+
+    rm -f $PIDFILE
+
+    return "$RETVAL"
+}
+
+reload() {
+    logger "Reloading Selenium Grid in ${SERVICE_ROLE} mode..."
+
+    [ ! -f $PIDFILE ] || kill -USR1 $(cat $PIDFILE)
+    RETVAL="$?"
+
+    return "$RETVAL"
+}
+
+status() {
+    if [ -e $PIDFILE ]; then
+        status_of_proc -p $PIDFILE "$DAEMON" "$SERVICE_NAME process" && exit 0 || exit $?
+    else
+        log_daemon_msg "$SERVICE_NAME: Process is not running."
+        log_end_msg 0
+    fi
+}
+
+case $COMMAND in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    reload)
+        reload
+        ;;
+    restart)
+        stop && start
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: service $SCRIPTNAME (start|stop|reload|restart|status)" >&2
+        exit 1
+esac
+
+exit $RETVAL

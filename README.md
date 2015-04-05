@@ -19,6 +19,7 @@ This setup was tested on Ubuntu 12.04 and 13.10 with JRE7.
 
 Create the user and necessary directories:
 ```bash
+# TODO: change this to adduser, because useradd is deprecated
 useradd -r -b /opt -s /usr/sbin/nologin selenium
 
 mkdir /opt/selenium
@@ -29,11 +30,11 @@ chown selenium:selenium /var/run/selenium /var/run/selenium
 
 Download Selenium Server jar file:
 ```bash
-SELENIUM_VERSION="2.35.0"
+SELENIUM_VERSION="2.45.0"
 
 cd /opt/selenium/
 wget https://selenium.googlecode.com/files/selenium-server-standalone-$SELENIUM_VERSION.jar
-ln -sfn selenium-server-standalone-$SELENIUM_VERSION.jar server-standalone.jar
+ln -sfn selenium-server-standalone-$SELENIUM_VERSION.jar selenium-server-standalone.jar
 ```
 
 Clone the repository and create necessary symlinks (or copy the files):
@@ -47,11 +48,18 @@ ln -s /var/lib/selenium/default/* /etc/default/
 
 To start and stop Selenium Hub and/or Node daemons:
 ```bash
-service selenium-hub start
-service selenium-node start
+sudo service selenium-hub start
+sudo service selenium-node start
 ```
 
 To setup the service to run automatically on server bootup:
 ```bash
 sudo update-rc.d selenium-hub defaults
+sudo update-rc.d selenium-node defaults
+```
+
+To remove the service from server bootup:
+```bash
+sudo update-rc.d -f selenium-hub remove
+sudo update-rc.d -f selenium-node remove
 ```

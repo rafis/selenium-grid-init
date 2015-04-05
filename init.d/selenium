@@ -8,8 +8,9 @@ COMMAND="$1"
 . /lib/init/vars.sh
 . /lib/lsb/init-functions
 
-DAEMON_ARGS="--quiet --pidfile $PIDFILE --user $SELENIUM_USER"
-DAEMON_CMD="$JAVA_HOME/java -- $JVM_ARGS -jar ${SELENIUM_HOME}/server-standalone.jar ${SELENIUM_ARGS}"
+DAEMON="$JAVA_HOME/jre/bin/java"
+DAEMON_ARGS="--pidfile $PIDFILE --nicelevel 19 --user $SELENIUM_USER"
+DAEMON_CMD="$DAEMON -- $JVM_ARGS -jar ${SELENIUM_HOME}/selenium-server-standalone.jar ${SELENIUM_ARGS}"
 
 start() {
     logger "Starting Selenium Grid in ${SERVICE_ROLE} mode..."
@@ -36,9 +37,18 @@ stop() {
     return "$RETVAL"
 }
 
+reload() {
+    logger "Reloading Selenium Grid in ${SERVICE_ROLE} mode..."
+
+    [ ! -f $PIDFILE ] || kill -USR1 $(cat $PIDFILE)
+    RETVAL="$?"
+
+    return "$RETVAL"
+}
+
 status() {
     if [ -e $PIDFILE ]; then
-        status_of_proc -p $PIDFILE $DAEMON "$SERVICE_NAME process" && exit 0 || exit $?
+        status_of_proc -p $PIDFILE "$DAEMON" "$SERVICE_NAME process" && exit 0 || exit $?
     else
         log_daemon_msg "$SERVICE_NAME: Process is not running."
         log_end_msg 0
@@ -52,6 +62,9 @@ case $COMMAND in
     stop)
         stop
         ;;
+    reload)
+        reload
+        ;;
     restart)
         stop && start
         ;;
@@ -59,7 +72,7 @@ case $COMMAND in
         status
         ;;
     *)
-        echo "Usage: service $JOB (start|stop|restart|status)" >&2
+        echo "Usage: service $JOB (start|stop|reload|restart|status)" >&2
         exit 1
 esac
 
