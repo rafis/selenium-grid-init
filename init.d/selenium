@@ -14,6 +14,7 @@ DAEMON_CMD="$DAEMON -- $JVM_ARGS -jar ${SELENIUM_HOME}/selenium-server-standalon
 
 start() {
     logger "Starting Selenium Grid in ${SERVICE_ROLE} mode..."
+    log_daemon_msg "Starting Selenium Grid in ${SERVICE_ROLE} mode..."
 
     mkdir -p "$LOGFILE_DIR" "$PIDFILE_DIR"
     chown -R $SELENIUM_USER "$LOGFILE_DIR" "$PIDFILE_DIR"
@@ -23,27 +24,39 @@ start() {
     start-stop-daemon $DAEMON_ARGS --start --background --make-pidfile --chuid $SELENIUM_USER --exec $DAEMON_CMD
     RETVAL="$?"
 
-    return "$RETVAL"
+    log_end_msg "$RETVAL"
 }
 
 stop() {
     logger "Stopping Selenium Grid instance..."
+    log_daemon_msg "Stopping Selenium Grid instance..."
 
     start-stop-daemon $DAEMON_ARGS --stop --retry=TERM/30/KILL/5
     RETVAL="$?"
 
     rm -f $PIDFILE
 
-    return "$RETVAL"
+    log_end_msg "$RETVAL"
+}
+
+restart() {
+    logger "Restarting Selenium Grid instance..."
+    log_daemon_msg "Restarting Selenium Grid instance..."
+
+    start-stop-daemon $DAEMON_ARGS --stop --oknodo --retry=TERM/30/KILL/5
+    [ ! -f $PIDFILE ] || rm -f $PIDFILE
+
+    start
 }
 
 reload() {
     logger "Reloading Selenium Grid in ${SERVICE_ROLE} mode..."
+    log_daemon_msg "Reloading Selenium Grid in ${SERVICE_ROLE} mode..."
 
     [ ! -f $PIDFILE ] || kill -USR1 $(cat $PIDFILE)
     RETVAL="$?"
 
-    return "$RETVAL"
+    log_end_msg "$RETVAL"
 }
 
 status() {
@@ -66,7 +79,7 @@ case $COMMAND in
         reload
         ;;
     restart)
-        stop && start
+        restart
         ;;
     status)
         status
